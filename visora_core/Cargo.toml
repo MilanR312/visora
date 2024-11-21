@@ -1,0 +1,10 @@
+[package]
+name = "visora-core"
+version = "0.1.0"
+edition = "2021"
+description = "reserved for future use"
+license = "MIT"
+
+[dependencies]
+dashmap = "6.1.0"
+slotmap = "1.0.7"

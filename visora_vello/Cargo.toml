@@ -1,0 +1,15 @@
+[package]
+name = "visora-vello"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+visora-core = { path = "../visora_core" }
+visora = { path = "../visora" }
+visora-macros = { path = "../visora_macros"}
+vello = "0.3.0"
+eyre = "0.6.12"
+pollster = "0.4.0"
+winit = "0.30.5"
+walkdir = "2.5.0"
+image = "0.25.5"

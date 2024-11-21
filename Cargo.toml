@@ -1,0 +1,3 @@
+[workspace]
+
+members = ["visora", "visora_core", "visora_macros","visora_ssr", "visora_vello"]

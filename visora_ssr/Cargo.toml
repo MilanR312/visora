@@ -1,0 +1,12 @@
+[package]
+name = "visora-ssr"
+version = "0.1.0"
+edition = "2021"
+description = "reserved for future use"
+license = "MIT"
+
+[dependencies]
+visora-core = { path = "../visora_core" }
+visora = { path = "../visora" }
+visora-macros = { path = "../visora_macros"}
+itertools = "0.13.0"

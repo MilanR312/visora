@@ -1,0 +1,10 @@
+[package]
+name = "visora"
+version = "0.1.0"
+edition = "2021"
+description = "reserved for future use"
+license = "MIT"
+
+[dependencies]
+lipsum = "0.9.1"
+visora-core = { path = "../visora_core" }
