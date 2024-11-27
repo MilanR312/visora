@@ -170,7 +170,7 @@ impl<'s, App: Widget<ModulaRenderer>> ApplicationHandler for AppRunner<'s, App> 
     }
 }
 
-pub fn run_app(renderer: ModulaRenderer, x: impl Widget<ModulaRenderer>){
+pub fn run_app(renderer: ModulaRenderer, x: impl Widget<ModulaRenderer>, set_window: impl Fn(Arc<Window>)){
     let mut gui = Gui::new(renderer);
     let context = gui.root_widget_context();
     x.mount(context);
