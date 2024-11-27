@@ -38,7 +38,7 @@ enum RenderState<'s> {
     Suspended(Option<Arc<Window>>),
 }
 
-struct AppRunner<'s> {
+struct AppRunner<'s, App> {
     // The vello RenderContext which is a global context that lasts for the
     // lifetime of the application
     context: RenderContext,
@@ -49,10 +49,11 @@ struct AppRunner<'s> {
     // State for our example where we store the winit Window and the wgpu Surface
     state: RenderState<'s>,
 
-    gui: Gui<ModulaRenderer>
+    gui: Gui<ModulaRenderer>,
+    widget: App
 }
 
-impl<'s> ApplicationHandler for AppRunner<'s> {
+impl<'s, App: Widget<ModulaRenderer>> ApplicationHandler for AppRunner<'s, App> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let RenderState::Suspended(cached_window) = &mut self.state else {
             return;
@@ -116,6 +117,10 @@ impl<'s> ApplicationHandler for AppRunner<'s> {
             }
             // This is where all the rendering happens
             WindowEvent::RedrawRequested => {
+                //temp since statefullwidgets dont exists yet
+                self.gui.clear_tree();
+                let context = self.gui.root_widget_context();
+                self.widget.mount(context);
                 // Empty the scene of objects to draw. You could create a new Scene each time, but in this case
                 // the same Scene is reused so that the underlying memory allocation can also be reused.
                 self.gui.renderer().scene.reset();
@@ -174,7 +179,8 @@ pub fn run_app(renderer: ModulaRenderer, x: impl Widget<ModulaRenderer>){
         context: RenderContext::new(),
         renderers: vec![],
         state: RenderState::Suspended(None),
-        gui
+        gui,
+        widget: x
     };
     let event_loop = EventLoop::new().expect("failed to create event loop");
     event_loop.run_app(&mut app)

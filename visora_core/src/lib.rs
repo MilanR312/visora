@@ -19,6 +19,9 @@ impl<R: Renderer> Gui<R> {
             renderer
         }
     }
+    pub fn clear_tree(&mut self){
+        self.tree = Treecs::new();
+    }
     pub fn root_widget_context(&mut self) -> WidgetContext<'_, R> {
         let key = self.tree.root();
         WidgetContext {
