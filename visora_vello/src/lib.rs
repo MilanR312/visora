@@ -516,11 +516,17 @@ impl Drawable for Image {
         }
     }
     fn update_parent(&self, self_size: Size, parent: &mut Constraints, renderer: &ModulaRenderer) {
-        parent.remaining.height -= self_size.height;
+        /*parent.remaining.height -= self_size.height;
         if parent.remaining.width == parent.original.width {
             parent.remaining.width = self_size.width;
         } else {
             parent.remaining.width = self_size.width.max(parent.remaining.width);
+        }*/
+        parent.remaining.width -= self_size.width;
+        if parent.remaining.height == parent.original.height {
+            parent.remaining.height = self_size.height;
+        } else {
+            parent.remaining.height = self_size.height.max(parent.remaining.height);
         }
     }
     fn generate_child_area(&self, working_area: &mut Area, child_size: Size) -> Option<Area> {
@@ -562,13 +568,18 @@ impl Drawable for Container {
         }
     }
     fn update_parent(&self, self_size: Size, parent: &mut Constraints, renderer: &ModulaRenderer) {
-        parent.remaining.height -= self_size.height;
+        /*parent.remaining.height -= self_size.height;
         if parent.remaining.width == parent.original.width {
             parent.remaining.width = self_size.width;
         } else {
             parent.remaining.width = self_size.width.max(parent.remaining.width);
+        }*/
+        parent.remaining.width -= self_size.width;
+        if parent.remaining.height == parent.original.height {
+            parent.remaining.height = self_size.height;
+        } else {
+            parent.remaining.height = self_size.height.max(parent.remaining.height);
         }
-        // not needed, when we are in this widget we pop from the constraint stack and this updates the parent anyway
     }
     fn generate_child_area(&self, working_area: &mut Area, child_size: Size) -> Option<Area> {
         Some(Area {
@@ -598,8 +609,10 @@ impl Drawable for List {
     }
     fn calc_size(&self, parent: Constraints, renderer: &ModulaRenderer) -> Size {
         Size {
-            width: parent.remaining.width,
-            height: parent.original.height - parent.remaining.height
+            //width: parent.remaining.width,
+            //height: parent.original.height - parent.remaining.height
+            width: parent.original.width - parent.remaining.width,
+            height: parent.remaining.height
         }
     }
     fn constraint(&self, parent: Constraints, renderer: &ModulaRenderer) -> Option<Constraint> {
@@ -615,8 +628,10 @@ impl Drawable for List {
             width: working_area.width,
             height: working_area.height
         };
-        working_area.top += child_size.height;
-        working_area.height -= child_size.height;
+        //working_area.top += child_size.height;
+        //working_area.height -= child_size.height;
+        working_area.left += child_size.width;
+        working_area.width -= child_size.width;
         Some(out)
     }
     fn draw(&self, renderer: &mut ModulaRenderer, area: Area) {
@@ -779,7 +794,7 @@ impl renderer::Renderer for ModulaRenderer {
                         area_stack.last_mut().unwrap()
                     };
                     ell.draw(self, *self_area);
-                    self_area.top += self_size.height;
+                    self_area.left += self_size.width;
                     println!("\tmodified_area: {self_area}");
                     //let child_area = sizes.pop_back().unwrap();
                     //let area = ell.generate_child_area(self_area, child_area);
@@ -820,10 +835,17 @@ impl Render<widget::container::Container<Self>> for ModulaRenderer {
         }));
     }
 }
-impl Render<widget::text::Vlist<Self>> for ModulaRenderer {
+/*impl Render<widget::text::Vlist<Self>> for ModulaRenderer {
     fn mount<'gui>(widget: &widget::text::Vlist<Self>, context: &mut visora_core::WidgetContext<'gui, Self>) {
         context.mount_renderer(Box::new(List {
             dir: Direction::Vertical
+        }));
+    }
+}*/
+impl Render<widget::list::Hlist<Self>> for ModulaRenderer {
+    fn mount<'gui>(widget: &widget::list::Hlist<Self>, context: &mut visora_core::WidgetContext<'gui, Self>) {
+        context.mount_renderer(Box::new(List {
+            dir: Direction::Horizontal
         }));
     }
 }
