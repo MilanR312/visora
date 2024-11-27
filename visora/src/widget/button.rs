@@ -3,6 +3,18 @@ use std::marker::PhantomData;
 use visora_core::{renderer::Renderer, widget::{Render, Widget}, BuildContext, Component, WidgetContext};
 
 
+pub struct Button2<F>(PhantomData<F>);
+impl<F: Component> Button2<F> {
+    pub fn new<'gui>(context: &mut BuildContext<'gui>, func: F) -> Self {
+        context.insert_component(func);
+        Self(PhantomData)
+    }
+    pub fn handle_click<'gui>(&self, context: &mut BuildContext<'gui>){
+        let Some(x) = context.get_component::<F>() else { return };
+
+    }
+}
+
 
 pub struct Button{
     // function isnt stored here, it is stored in the ecs

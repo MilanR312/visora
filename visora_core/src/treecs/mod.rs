@@ -17,6 +17,7 @@ new_key_type! {
     pub struct EntityKey;
 }
 
+// TODO: change slotmap for slab
 pub struct Treecs {
     linkdata: SlotMap<EntityKey, LinkData>,
     root: EntityKey,

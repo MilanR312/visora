@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, VecDeque}, fmt::Display, ops::Sub, path::PathBuf, sync::{Arc, LazyLock}};
+use std::{collections::{HashMap, VecDeque}, fmt::Display, ops::{IndexMut, Sub}, path::PathBuf, sync::{Arc, LazyLock}};
 
 use image::DynamicImage;
 use visora::widget::{self, container::EdgeInsets};
@@ -308,7 +308,7 @@ impl Drawable for Text {
         false
     }
     fn calc_size(&self, parent: Constraints, renderer: &ModulaRenderer) -> Size {
-        let work_area = parent.remaining;
+        let work_area = parent.original;
         //let fontref = to_font_ref( if self.bold { &renderer.font_bold } else { &renderer.font }).unwrap();
         let fontref = to_font_ref(&renderer.font).unwrap();
         
@@ -341,6 +341,7 @@ impl Drawable for Text {
             max_width = current_width + 1.0; //TODO: this should be better
         }
         current_height += line_height; // since we added another line
+
         Constraint { 
             height: current_height,
             width: max_width
@@ -473,11 +474,16 @@ impl Image {
             max_width
         }
     }
+    pub fn get_width(&self, size: Size) -> u32 {
+        self.max_width.map_or_else(|| size.width as u32, |x| x.min(size.width as u32))
+    }
+    pub fn get_height(&self, size: Size) -> u32 {
+        self.max_height.map_or_else(|| size.height as u32, |x| x.min(size.height as u32))
+    }
+
     pub fn generate_image(&self, size: Size) -> peniko::Image {
-        let width = size.width as u32;
-        let height = size.height as u32;
-        let width = self.max_width.map_or_else(|| width, |x| x.min(width));
-        let height = self.max_height.map_or_else(|| height, |x| x.min(height));
+        let width = self.get_width(size);
+        let height = self.get_height(size);
         let data = match &self.data {
             Ok(x) => x.resize(width, height, image::imageops::FilterType::Gaussian),
             Err(x) => match x {
@@ -487,10 +493,10 @@ impl Image {
         };
         let raw_data = data.to_rgba8().to_vec().into_boxed_slice();
         let blob = Blob::new(Arc::new(raw_data));
-        peniko::Image::new(blob, peniko::Format::Rgba8, width, height)
+        peniko::Image::new(blob, peniko::Format::Rgba8, data.width(), data.height())
     }
 }
-/*
+
 impl Drawable for Image {
     fn name(&self) -> &'static str {
         "image"
@@ -502,20 +508,31 @@ impl Drawable for Image {
         None
     }
     fn calc_size(&self, parent: Constraints, renderer: &ModulaRenderer) -> Size {
-        // image is a growable widget and takes in as much space as it can
-        parent.remaining
+        let width = self.get_width(parent.remaining);
+        let height = self.get_height(parent.remaining);
+        Size {
+            width: width as f32,
+            height: height as f32
+        }
     }
     fn update_parent(&self, self_size: Size, parent: &mut Constraints, renderer: &ModulaRenderer) {
-        parent.remaining
+        parent.remaining.height -= self_size.height;
+        if parent.remaining.width == parent.original.width {
+            parent.remaining.width = self_size.width;
+        } else {
+            parent.remaining.width = self_size.width.max(parent.remaining.width);
+        }
     }
     fn generate_child_area(&self, working_area: &mut Area, child_size: Size) -> Option<Area> {
         None
     }
     fn draw(&self, renderer: &mut ModulaRenderer, area: Area) {
+        println!("image offset: {area:?}");
         let img = self.generate_image(Size{ height: area.height, width: area.width });
+        println!("------ {}x{} {}", img.width,img.height, img.data.len());
         renderer.scene.draw_image(&img, Affine::translate(Vec2::new(area.left as f64, area.top as f64)));
     }
-}*/
+}
 
 pub struct Container {
     insets: EdgeInsets,
@@ -595,8 +612,8 @@ impl Drawable for List {
         let out = Area {
             top: working_area.top,
             left: working_area.left,
-            width: child_size.width,
-            height: child_size.height
+            width: working_area.width,
+            height: working_area.height
         };
         working_area.top += child_size.height;
         working_area.height -= child_size.height;
@@ -748,7 +765,6 @@ impl renderer::Renderer for ModulaRenderer {
                     println!("\tself_area: {}", area_stack.last().unwrap());
                     println!("\tself_size: {:?}", sizes.back().unwrap());
                     let self_size = sizes.pop_back().unwrap();
-                    let self_area = *area_stack.last_mut().unwrap();
                     if let Some(child_size) = sizes.back(){
                         let self_area = area_stack.last_mut().unwrap();
                         let child_area = ell.generate_child_area(self_area, *child_size);
@@ -757,7 +773,14 @@ impl renderer::Renderer for ModulaRenderer {
                         }
                         println!("\tchild_area: {child_area:?}");
                     }
-                    ell.draw(self, self_area);
+                    let self_area = if ell.generate_child_area(&mut Area{ top: 0.0, left: 0.0, width: 0.0, height: 0.0}, self_size).is_some(){
+                        area_stack.index_mut(area_stack.len()-2)
+                    } else {
+                        area_stack.last_mut().unwrap()
+                    };
+                    ell.draw(self, *self_area);
+                    self_area.top += self_size.height;
+                    println!("\tmodified_area: {self_area}");
                     //let child_area = sizes.pop_back().unwrap();
                     //let area = ell.generate_child_area(self_area, child_area);
                     //println!("area: {area:?}");
@@ -770,7 +793,9 @@ impl renderer::Renderer for ModulaRenderer {
                     //ell.draw(self_area, self);
                 },
                 BreadthInfo::MoveUp => {
-                    area_stack.pop();
+                    if ell.lays_constraint(){
+                        area_stack.pop();
+                    }
                 }
             }
         }
@@ -807,12 +832,12 @@ impl Render<widget::center::Center<Self>> for ModulaRenderer {
         context.mount_renderer(Box::new(Center));
     }
 }
-/*
+
 impl Render<widget::image::Image> for ModulaRenderer {
-    fn mount<'gui>(widget: &widget::image::Image, context: &mut modula_core::WidgetContext<'gui, Self>) {
+    fn mount<'gui>(widget: &widget::image::Image, context: &mut visora_core::WidgetContext<'gui, Self>) {
         context.mount_renderer(Box::new(Image::new(widget.path.clone(), widget.max_width, widget.max_height)));
     }
-}*/
+}
 /*
 impl Render<Vlist<Self>> for ModulaRenderer {
     fn mount<'gui>(widget: &Vlist<Self>, context: &mut modula_core::WidgetContext<'gui, Self>) {

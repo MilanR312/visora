@@ -114,7 +114,6 @@ impl<'s> ApplicationHandler for AppRunner<'s> {
                 self.context
                     .resize_surface(&mut render_state.surface, size.width, size.height);
             }
-
             // This is where all the rendering happens
             WindowEvent::RedrawRequested => {
                 // Empty the scene of objects to draw. You could create a new Scene each time, but in this case
