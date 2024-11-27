@@ -38,7 +38,7 @@ enum RenderState<'s> {
     Suspended(Option<Arc<Window>>),
 }
 
-struct AppRunner<'s, App> {
+struct AppRunner<'s, App, F> {
     // The vello RenderContext which is a global context that lasts for the
     // lifetime of the application
     context: RenderContext,
@@ -50,10 +50,11 @@ struct AppRunner<'s, App> {
     state: RenderState<'s>,
 
     gui: Gui<ModulaRenderer>,
-    widget: App
+    widget: App,
+    set_window: F
 }
 
-impl<'s, App: Widget<ModulaRenderer>> ApplicationHandler for AppRunner<'s, App> {
+impl<'s, App: Widget<ModulaRenderer>, F: Fn(Arc<Window>)> ApplicationHandler for AppRunner<'s, App, F> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let RenderState::Suspended(cached_window) = &mut self.state else {
             return;
@@ -63,6 +64,7 @@ impl<'s, App: Widget<ModulaRenderer>> ApplicationHandler for AppRunner<'s, App> 
         let window = cached_window
             .take()
             .unwrap_or_else(|| create_winit_window(event_loop));
+        (self.set_window)(window.clone());
         self.gui.renderer().window = Some(window.clone());
         // Create a vello Surface
         let size = window.inner_size();
@@ -180,7 +182,8 @@ pub fn run_app(renderer: ModulaRenderer, x: impl Widget<ModulaRenderer>, set_win
         renderers: vec![],
         state: RenderState::Suspended(None),
         gui,
-        widget: x
+        widget: x,
+        set_window
     };
     let event_loop = EventLoop::new().expect("failed to create event loop");
     event_loop.run_app(&mut app)
