@@ -704,16 +704,16 @@ impl ModulaRenderer {
         }));
         //let mut cut_directions = Vec::new();
         let mut sizes = VecDeque::new();
-        println!("\nsizes");
+        //println!("\nsizes");
         
         while let Some((info, ell)) = q.next() {
-            println!("{} {}: ", ell.name(), if info == BreadthInfo::MoveUp { '^' } else { 'V' });
-            println!("\t{}", constraints.last().unwrap());
+            //println!("{} {}: ", ell.name(), if info == BreadthInfo::MoveUp { '^' } else { 'V' });
+            //println!("\t{}", constraints.last().unwrap());
             match info {
                 BreadthInfo::Other => {
                     let parent_constraint = *constraints.last().unwrap();
                     if let Some(x) = ell.constraint(parent_constraint, self){
-                        println!("\tpush({x})");
+                        //println!("\tpush({x})");
                         constraints.push(Constraints::new(x));
                     }
                     // when going down we always push the childs constraint
@@ -730,16 +730,16 @@ impl ModulaRenderer {
                 BreadthInfo::MoveUp => {
                     let parent_constraint = *constraints.last().unwrap();
                     let size: Size = ell.calc_size(parent_constraint, self);
-                    println!("\tcalc_size({}) == {}", parent_constraint, size);
+                    //println!("\tcalc_size({}) == {}", parent_constraint, size);
                     //print!("p {} {}", *parent_constraint, size);
                     if ell.lays_constraint() {
                         let a = constraints.pop();
-                        println!("\tpop({}) ", a.unwrap())
+                        //println!("\tpop({}) ", a.unwrap())
                     }
                     let p_before = parent_constraint;
                     let parent_constraint = constraints.last_mut().unwrap();
                     ell.update_parent(size, parent_constraint, self);
-                    println!("\tupdate parent {p_before} -> {parent_constraint}");                  
+                    //println!("\tupdate parent {p_before} -> {parent_constraint}");                  
                     sizes.push_back(size);
 
                 }
@@ -768,17 +768,17 @@ impl renderer::Renderer for ModulaRenderer {
             height: 100.0,
             width: 100.0
         });*/
-        println!("");
-        println!("astack = {area_stack:?}");
-        println!("sizestack = {sizes:?}");
+        //println!("");
+        //println!("astack = {area_stack:?}");
+        //println!("sizestack = {sizes:?}");
         //sizes.pop_back();
         let q = q.restart().reverse();
         for (info, ell) in q {
             match info {
                 BreadthInfo::Other => {
-                    println!("{}: ", ell.name());
-                    println!("\tself_area: {}", area_stack.last().unwrap());
-                    println!("\tself_size: {:?}", sizes.back().unwrap());
+                    //println!("{}: ", ell.name());
+                    //println!("\tself_area: {}", area_stack.last().unwrap());
+                    //println!("\tself_size: {:?}", sizes.back().unwrap());
                     let self_size = sizes.pop_back().unwrap();
                     if let Some(child_size) = sizes.back(){
                         let self_area = area_stack.last_mut().unwrap();
@@ -786,7 +786,7 @@ impl renderer::Renderer for ModulaRenderer {
                         if let Some(child_area) = child_area {
                             area_stack.push(child_area);
                         }
-                        println!("\tchild_area: {child_area:?}");
+                        //println!("\tchild_area: {child_area:?}");
                     }
                     let self_area = if ell.generate_child_area(&mut Area{ top: 0.0, left: 0.0, width: 0.0, height: 0.0}, self_size).is_some(){
                         area_stack.index_mut(area_stack.len()-2)
@@ -795,7 +795,7 @@ impl renderer::Renderer for ModulaRenderer {
                     };
                     ell.draw(self, *self_area);
                     self_area.left += self_size.width;
-                    println!("\tmodified_area: {self_area}");
+                    //println!("\tmodified_area: {self_area}");
                     //let child_area = sizes.pop_back().unwrap();
                     //let area = ell.generate_child_area(self_area, child_area);
                     //println!("area: {area:?}");

@@ -214,4 +214,3 @@ mod tests {
         assert_eq!(world.get_component::<Name>(entity).as_deref(), None);
     }
 }
-fn main() {}
