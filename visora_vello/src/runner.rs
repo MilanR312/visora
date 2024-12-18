@@ -10,6 +10,7 @@ use visora_macros::StatelessWidget;
 use crate::ModulaRenderer;
 use vello::skrifa::prelude::Size;
 use vello::skrifa::{FontRef, MetadataProvider};
+use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
@@ -51,7 +52,8 @@ struct AppRunner<'s, App, F> {
 
     gui: Gui<ModulaRenderer>,
     widget: App,
-    set_window: F
+    set_window: F,
+    name: Cow<'static, str>
 }
 
 impl<'s, App: Widget<ModulaRenderer>, F: Fn(Arc<Window>)> ApplicationHandler for AppRunner<'s, App, F> {
@@ -63,7 +65,7 @@ impl<'s, App: Widget<ModulaRenderer>, F: Fn(Arc<Window>)> ApplicationHandler for
         // Get the winit window cached in a previous Suspended event or else create a new window
         let window = cached_window
             .take()
-            .unwrap_or_else(|| create_winit_window(event_loop));
+            .unwrap_or_else(|| create_winit_window(event_loop, self.name.as_ref()));
         (self.set_window)(window.clone());
         self.gui.renderer().window = Some(window.clone());
         // Create a vello Surface
@@ -172,7 +174,7 @@ impl<'s, App: Widget<ModulaRenderer>, F: Fn(Arc<Window>)> ApplicationHandler for
     }
 }
 
-pub fn run_app(renderer: ModulaRenderer, x: impl Widget<ModulaRenderer>, set_window: impl Fn(Arc<Window>)){
+pub fn run_app<T: Into<Cow<'static, str>>>(renderer: ModulaRenderer, x: impl Widget<ModulaRenderer>, name: T,set_window: impl Fn(Arc<Window>)){
     let mut gui = Gui::new(renderer);
     let context = gui.root_widget_context();
     x.mount(context);
@@ -183,7 +185,8 @@ pub fn run_app(renderer: ModulaRenderer, x: impl Widget<ModulaRenderer>, set_win
         state: RenderState::Suspended(None),
         gui,
         widget: x,
-        set_window
+        set_window,
+        name: name.into()
     };
     let event_loop = EventLoop::new().expect("failed to create event loop");
     event_loop.run_app(&mut app)
@@ -194,11 +197,11 @@ pub fn run_app(renderer: ModulaRenderer, x: impl Widget<ModulaRenderer>, set_win
 
 
 /// Helper function that creates a Winit window and returns it (wrapped in an Arc for sharing between threads)
-fn create_winit_window(event_loop: &ActiveEventLoop) -> Arc<Window> {
+fn create_winit_window(event_loop: &ActiveEventLoop, name: &str) -> Arc<Window> {
     let attr = Window::default_attributes()
         .with_inner_size(LogicalSize::new(1044, 800))
         .with_resizable(true)
-        .with_title("Vello Shapes");
+        .with_title(name);
     Arc::new(event_loop.create_window(attr).unwrap())
 }
 

@@ -55,7 +55,7 @@ fn main(){
         scene: Scene::new(),
         window: None
     };
-    run_app(renderer, App, |x|{});
+    run_app(renderer, App, "test", |x|{});
 }
 
 
