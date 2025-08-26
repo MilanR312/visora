@@ -62,7 +62,7 @@ impl<'gui> BuildContext<'gui> {
     pub fn insert_component<Q: Component>(&self, comp: Q) {
         self.store.add_component(self.key, comp);
     }
-    
+
 }
 pub struct WidgetContext<'gui, R> {
     tree: &'gui mut Treecs,

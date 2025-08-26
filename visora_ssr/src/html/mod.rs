@@ -1,12 +1,54 @@
 use std::{borrow::Cow, collections::HashMap, fmt::Write, fs::File, io::Write as ioWrite};
 
 use itertools::Itertools;
-use visora::widget::{button::Button, center::Center, container::Container, list::Hlist, text::{self, RichText, Text, Vlist}};
+use visora::widget::{button::TextButton, center::Center, container::Container, list::Hlist, text::{self, RichText, Text, Vlist}};
 use visora_core::{renderer::Renderer, treecs::iterators::breadth::{BreadthInfo, BreadthIter}, widget::Render};
 
 mod tags;
 
-
+#[derive(Debug)]
+pub struct Attributes{
+    on_click: Option<Cow<'static, str>>,
+    styles: HashMap<&'static str, Cow<'static, str>>
+}
+impl Attributes {
+    pub fn new() -> Self {
+        Self {
+            on_click: None,
+            styles: HashMap::new()
+        }
+    }
+    pub fn with_style(mut  self, key: &'static str, value: Cow<'static, str>) -> Self {
+        self.add_style(key, value);
+        self
+    }
+    pub fn add_style(&mut self, key: &'static str, value: Cow<'static, str>){
+        self.styles.insert(key, value);
+    }
+    pub fn with_on_click(mut self, method: Cow<'static, str>) -> Self {
+        self.add_on_click(method);
+        self
+    }
+    pub fn add_on_click(&mut self, method: Cow<'static, str>){
+        self.on_click = Some(method);
+    }
+    pub fn write(&self, dest: &mut String) -> Result<(), std::fmt::Error>{
+        dest.write_char(' ')?;
+        if self.styles.len() > 0 {
+            dest.write_str("style=\"")?;
+            let attrs = self.styles.iter().map(|(key, val)| format!("{key}:{val}")).join(";");
+            dest.write_str(&attrs)?;
+            dest.write_str("\"")?;
+            dest.write_char(' ')?;
+        }
+        if let Some(click) = &self.on_click {
+            dest.write_str("onclick=\"")?;
+            dest.write_str(&click)?;
+            dest.write_str("\"")?;
+        }
+        Ok(())
+    }
+}
 
 pub struct HtmlRenderer;
 
@@ -20,30 +62,24 @@ pub enum Tag {
 #[derive(Debug)]
 pub struct HtmlTag{
     tag: Tag,
-    attributes: HashMap<&'static str, Cow<'static, str>>
+    attributes: Attributes
 }
 impl HtmlTag {
-    fn write_attributes(&self, dest: &mut String) -> Result<(), std::fmt::Error>{
-        dest.write_str(" style=\"")?;
-        let attrs = self.attributes.iter().map(|(key, val)| format!("{key}:{val}")).join(";");
-        dest.write_str(&attrs)?;
-        dest.write_str("\"")
-    }
     pub fn write_open(&self, dest: &mut String) -> Result<(), std::fmt::Error>{
         match &self.tag {
             Tag::Div => {
                 dest.write_str("<div")?;
-                self.write_attributes(dest)?;
+                self.attributes.write(dest)?;
                 dest.write_str(">")
             },
             Tag::Button => {
                 dest.write_str("<button")?;
-                self.write_attributes(dest)?;
+                self.attributes.write(dest)?;
                 dest.write_str(">")
             }
             Tag::P(x) => {
                 dest.write_str("<p")?;
-                self.write_attributes(dest)?;
+                self.attributes.write(dest)?;
                 dest.write_str(">")?;
                 dest.write_str(x)
             }
@@ -83,7 +119,7 @@ impl Render<Text> for HtmlRenderer {
     fn mount<'gui>(widget: &Text, context: &mut visora_core::WidgetContext<'gui, Self>) {
         context.mount_renderer(HtmlTag{
             tag: Tag::P(widget.data.clone()),
-            attributes: HashMap::new()
+            attributes: Attributes::new()
         });
     }
 }
@@ -92,15 +128,15 @@ impl Render<Vlist<Self>> for HtmlRenderer {
     fn mount<'gui>(widget: &Vlist<Self>, context: &mut visora_core::WidgetContext<'gui, Self>) {
         context.mount_renderer(HtmlTag {
             tag: Tag::Div,
-            attributes: HashMap::new()
+            attributes: Attributes::new()
         });
     }
 }
 impl Render<Hlist<Self>> for HtmlRenderer {
     fn mount<'gui>(widget: &Hlist<Self>, context: &mut visora_core::WidgetContext<'gui, Self>) {
-        let mut attributes = HashMap::new();
-        attributes.insert("display", Cow::Borrowed("flex"));
-        attributes.insert("flex-direction", Cow::Borrowed("row"));
+        let attributes = Attributes::new()
+            .with_style("display", Cow::Borrowed("flex"))
+            .with_style("flex-direction", Cow::Borrowed("row"));
         context.mount_renderer(HtmlTag {
             tag: Tag::Div,
             attributes
@@ -109,10 +145,8 @@ impl Render<Hlist<Self>> for HtmlRenderer {
 }
 impl Render<RichText> for HtmlRenderer {
     fn mount<'gui>(widget: &RichText, context: &mut visora_core::WidgetContext<'gui, Self>) {
-        let mut attributes = HashMap::new();
-        // TODO: add all attributes
-        attributes.insert("color", Cow::Owned(format!("#{:06X}", widget.color().value())));
-        dbg!(widget.color());
+        let attributes = Attributes::new()
+            .with_style("color", Cow::Owned(format!("#{:06X}", widget.color().value())));
         context.mount_renderer(HtmlTag {
             tag: Tag::P(widget.text().to_owned()),
             attributes
@@ -121,10 +155,10 @@ impl Render<RichText> for HtmlRenderer {
 }
 impl Render<Center<Self>> for HtmlRenderer {
     fn mount<'gui>(widget: &Center<Self>, context: &mut visora_core::WidgetContext<'gui, Self>) {
-        let mut attributes = HashMap::new();
-        attributes.insert("display", Cow::Borrowed("flex"));
-        attributes.insert("justify-content", Cow::Borrowed("center"));
-        attributes.insert("align-items", Cow::Borrowed("center"));
+        let attributes = Attributes::new()
+            .with_style("display", Cow::Borrowed("flex"))
+            .with_style("justify-content", Cow::Borrowed("center"))
+            .with_style("align-items", Cow::Borrowed("center"));
         context.mount_renderer(HtmlTag{
             tag: Tag::Div,
             attributes
@@ -133,12 +167,12 @@ impl Render<Center<Self>> for HtmlRenderer {
 }
 impl Render<Container<Self>> for HtmlRenderer {
     fn mount<'gui>(widget: &Container<Self>, context: &mut visora_core::WidgetContext<'gui, Self>) {
-        let mut attributes = HashMap::new();
+        let mut attributes = Attributes::new();
         let padding = widget.insets();
         if padding.is_even() {
-            attributes.insert("padding", Cow::Owned(format!("{}px", padding.top())));
+            attributes.add_style("padding", Cow::Owned(format!("{}px", padding.top())));
         } else {
-            attributes.insert("padding", Cow::Owned(format!("{}px {}px {}px {}px", padding.top(), padding.right(), padding.bottom(), padding.bottom())));
+            attributes.add_style("padding", Cow::Owned(format!("{}px {}px {}px {}px", padding.top(), padding.right(), padding.bottom(), padding.bottom())));
         }
 
 
@@ -149,11 +183,14 @@ impl Render<Container<Self>> for HtmlRenderer {
     }
 }
 
-impl Render<Button> for HtmlRenderer {
-    fn mount<'gui>(widget: &Button, context: &mut visora_core::WidgetContext<'gui, Self>) {
+impl Render<TextButton> for HtmlRenderer {
+    fn mount<'gui>(widget: &TextButton, context: &mut visora_core::WidgetContext<'gui, Self>) {
+        let attributes = Attributes::new()
+            .with_on_click(Cow::Borrowed("console.log('hello world')"));
+
         context.mount_renderer(HtmlTag {
             tag: Tag::Button,
-            attributes: HashMap::new()
+            attributes
         });
     }
 }

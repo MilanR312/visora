@@ -1,10 +1,10 @@
 use std::ops::DerefMut;
 
 use visora::widget::{
-    button::Button, center::Center, container::{Container, EdgeInsets}, list::Hlist, text::{RichText, Text, Vlist}
+    button::TextButton, center::Center, container::{Container, EdgeInsets}, list::Hlist, text::{RichText, Text, Vlist}
 };
 use visora_core::{
-    color::Color, renderer::Renderer, widget::{State, StatefulWidget, StatelessWidget, Widget}, Gui, WidgetContext
+    color::Color, renderer::Renderer, treecs::query::Query, widget::{State, StatefulWidget, StatelessWidget, Widget}, Gui, WidgetContext
 };
 use visora_macros::{StatefulWidget, StatelessWidget};
 use visora_ssr::html::HtmlRenderer;
@@ -19,8 +19,12 @@ impl<R: visora_ssr::SupportedWidgets> StatelessWidget<R> for Name {
         Text::new("john doe")
     }
 }
+
+
 #[derive(StatelessWidget)]
-struct Attribution;
+struct Attribution{
+    name: String
+}
 impl<R> StatelessWidget<R> for Attribution
 where
     R: visora_ssr::SupportedWidgets,
@@ -34,7 +38,7 @@ where
                 .with_child(
                     Vlist::new()
                         .add(Text::new("this is a working demo of modulars"))
-                        .add(Hlist::new().add(Text::new("made by:")).add(Name))
+                        .add(Hlist::new().add(Text::new("made by:")).add(Text::new(&self.name)))
                         .add(Text::lorem(50))
                         .add(
                             RichText::new("and in color :)".to_owned())
@@ -52,8 +56,10 @@ struct Counter {
     start: u64,
     end: u64
 }
+
 struct CounterState(u64);
 impl State for CounterState{}
+
 impl<R: visora_ssr::SupportedWidgets> StatefulWidget<R> for Counter {
     type State = CounterState;
     fn create_state(&self) -> Self::State {
@@ -66,7 +72,9 @@ impl<R: visora_ssr::SupportedWidgets> StatefulWidget<R> for Counter {
                 .with_color(Color::new_hex(0x000000ff))
             )
             .add(
-                Button::new()
+                TextButton::new(
+                        Text::new("Press me")
+                    )
                     .on_click(context, |state: &mut Self::State| {
                         state.changed();
                     })
