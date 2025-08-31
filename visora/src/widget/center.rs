@@ -1,21 +1,23 @@
 use std::marker::PhantomData;
 
-use visora_core::{renderer::Renderer, widget::{Render, Widget}, WidgetContext};
+use visora_core::{renderer::Renderer, widget::{Render, RenderAble, Widget}, WidgetContext};
+use visora_macros::RenderAble;
 
 
-
-pub struct Center<R>{
-    child: Box<dyn Widget<R>>
+pub struct Center<W>{
+    child: W
 }
-impl<R: Renderer> Center<R> {
-    pub fn new(data: impl Widget<R> + 'static) -> Self {
+impl<W:'static> Center<W>
+{
+    pub fn new(data: W) -> Self {
         Self {
-            child: Box::new(data)
+            child: data
         }
     }
 }
-impl<R> Widget<R> for Center<R>
-where R: Renderer + Render<Self>
+impl<R, W> RenderAble<R> for Center<W>
+where W: Widget<R>,
+      R: Renderer + Render<Self>
 {
     fn mount<'gui>(&self, mut context: WidgetContext<'gui, R>) -> WidgetContext<'gui, R> {
         R::mount(self, &mut context);
@@ -24,4 +26,15 @@ where R: Renderer + Render<Self>
     }
 }
 
+
+/*impl<R> Widget<R> for Center<R>
+where R: Renderer + Render<Self>
+{
+    fn mount<'gui>(&self, mut context: WidgetContext<'gui, R>) -> WidgetContext<'gui, R> {
+        R::mount(self, &mut context);
+        let child = context.new_child();
+        self.child.mount(child).to_parent().unwrap()
+    }
+}
+*/
 

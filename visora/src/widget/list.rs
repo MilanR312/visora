@@ -1,20 +1,21 @@
-use visora_core::{renderer::Renderer, widget::{Render, Widget}, WidgetContext};
+use visora_core::{WidgetContext, renderer::Renderer, widget::{Render, RenderAble, Widget}};
+
 
 
 
 pub struct Hlist<R> {
-    pub data: Vec<Box<dyn Widget<R>>>,
+    pub data: Vec<Box<dyn RenderAble<R>>>,
 }
 impl<R: Renderer> Hlist<R> {
     pub fn new() -> Self {
         Self { data: vec![] }
     }
-    pub fn add(mut self, x: impl Widget<R> + 'static) -> Self {
+    pub fn add(mut self, x: impl RenderAble<R> + 'static) -> Self {
         self.data.push(Box::new(x));
         self
     }
 }
-impl<R> Widget<R> for Hlist<R>
+impl<R> RenderAble<R> for Hlist<R>
 where R: Renderer + Render<Self>
 {
     fn mount<'gui>(&self, mut context: WidgetContext<'gui, R>) -> WidgetContext<'gui, R> {

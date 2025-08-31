@@ -8,3 +8,4 @@ license = "MIT"
 [dependencies]
 lipsum = "0.9.1"
 visora-core = { path = "../visora_core" }
+visora-macros = {path = "../visora_macros"}

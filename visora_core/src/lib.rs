@@ -2,6 +2,7 @@ pub mod treecs;
 pub mod widget;
 pub mod color;
 pub mod renderer;
+pub mod state;
 use std::marker::PhantomData;
 
 use renderer::Renderer;

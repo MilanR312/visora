@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 use visora_core::{renderer::Renderer, widget::{Render, Widget}, WidgetContext};
 
 
+
+/*
 pub struct Image{
     // an image widget is only a path, this keeps it cheap
     pub path: PathBuf,
@@ -34,4 +36,4 @@ where R: Renderer + Render<Self>
         R::mount(self, &mut context);
         context
     }
-}
+}*/

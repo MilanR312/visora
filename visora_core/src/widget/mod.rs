@@ -1,93 +1,41 @@
 use std::marker::PhantomData;
 
-use crate::{treecs::component::{Component, ComponentEntry, ComponentEntryMut}, BuildContext, WidgetContext};
+use crate::{BuildContext, WidgetContext, renderer::Renderer, state::State, treecs::component::{Component, ComponentEntry, ComponentEntryMut}};
 
 
 
-mod test {
-
-    trait Widget{
-        fn mount(&self){}
-    }
-    trait RenderWidget: Widget{
-        fn attach(&self){}
-    }
-    trait StatelessWidget: Widget{
-        fn build(&self) -> impl Widget;
-    }
-
-    struct Text;
-    impl Widget for Text{
-        fn mount(&self) {
-            self.attach();
-        }
-    }
-    impl RenderWidget for Text {
-        fn attach(&self) {
-            println!("attached Text");
-        }
-    }
-
-    struct Vlist(Vec<Box<dyn Widget>>);
-    impl Widget for Vlist {
-        fn mount(&self) {
-            self.attach();
-        }
-    }
-    impl RenderWidget for Vlist {
-        fn attach(&self) {
-            println!("attached Vlist");
-            for x in &self.0 {
-                x.mount();
-            }
-        }
-    }
-
-    struct Attribution;
-    impl Widget for Attribution {
-        fn mount(&self) {
-            let a = self.build();
-            println!("built attribution");
-            a.mount();
-        }
-    }
-    impl StatelessWidget for Attribution {
-        fn build(&self) -> impl Widget {
-            Vlist(
-                vec![
-                    Box::new(Text),
-                    Box::new(Text),
-                ]
-            )
-        }
-    }
 
 
-}
 
 
-pub trait Widget<R>{
+pub trait RenderAble<R> {
     fn mount<'gui>(&self, context: WidgetContext<'gui, R>) -> WidgetContext<'gui, R>;
 }
-pub trait StatelessWidget<R>: Widget<R> {
-    fn build<'gui>(&self, context: &mut BuildContext<'gui>) -> impl Widget<R> + 'static;
-}
 
-pub trait State{
-    fn changed(&self){}
-}
-pub trait StatefulWidget<R>: Widget<R>  {
-    type State: Component + State;
-    fn get_state_mut<'gui, 'ctx>(context: &'ctx mut BuildContext<'gui>) -> &'ctx mut Self::State {
-        context.get_component_mut::<Self::State>().expect("state not found, did you forget to add it in the add_state method?")
-    }
+
+pub trait Widget<R>: RenderAble<R> {
+    type State: Component;
+
     fn create_state(&self) -> Self::State;
-    fn build<'gui>(&self, state: &Self::State, context: &mut BuildContext<'gui>) -> impl Widget<R> + 'static;
+
+    fn build<'gui>(&self, state: State<Self>, context: &mut BuildContext<'gui>) -> impl RenderAble<R> + 'static;
 }
 
-
-
-
+/*impl<R, T> RenderAble<R> for T
+where T: Widget<R>,
+    R: Renderer
+{
+    fn mount<'gui>(&self, mut context: WidgetContext<'gui, R>) -> WidgetContext<'gui, R> {
+        context.insert_component(self.create_state());
+        let mut build_context = context.get_buildcontext();
+        let build = {
+            let state = context.get_component::<<Self as Widget<R>>::State>().unwrap();
+            <Self as Widget<R>>::build(&self, state, &mut build_context)
+        };
+        build.mount(context)
+    }
+}
+*/
 
 
 pub trait Render<Widget: ?Sized>: Sized + 'static

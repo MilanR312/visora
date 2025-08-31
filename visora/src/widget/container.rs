@@ -35,7 +35,7 @@ impl EdgeInsets {
     }
 }
 
-
+/*
 pub struct Container<R>{
     child: Option<Box<dyn Widget<R>>>,
     insets: EdgeInsets,
@@ -83,3 +83,4 @@ where R: Renderer + Render<Self>
         }
     }
 }
+*/

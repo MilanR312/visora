@@ -1,7 +1,8 @@
-use std::{borrow::Cow, collections::HashMap, fmt::Write, fs::File, io::Write as ioWrite};
+use std::{borrow::Cow, collections::HashMap, fmt::Write, fs::File, io::{Read, Write as ioWrite}};
 
 use itertools::Itertools;
-use visora::widget::{button::TextButton, center::Center, container::Container, list::Hlist, text::{self, RichText, Text, Vlist}};
+use uuid::Uuid;
+use visora::widget::{button::TextButton, center::Center, list::Hlist, text::{self, RichText, Text}};
 use visora_core::{renderer::Renderer, treecs::iterators::breadth::{BreadthInfo, BreadthIter}, widget::Render};
 
 mod tags;
@@ -9,17 +10,23 @@ mod tags;
 #[derive(Debug)]
 pub struct Attributes{
     on_click: Option<Cow<'static, str>>,
-    styles: HashMap<&'static str, Cow<'static, str>>
+    styles: HashMap<&'static str, Cow<'static, str>>,
+    id: String
 }
 impl Attributes {
     pub fn new() -> Self {
         Self {
             on_click: None,
-            styles: HashMap::new()
+            styles: HashMap::new(),
+            id: Uuid::new_v4().to_string()
         }
     }
     pub fn with_style(mut  self, key: &'static str, value: Cow<'static, str>) -> Self {
         self.add_style(key, value);
+        self
+    }
+    pub fn with_id(mut self, id: String) -> Self {
+        self.id = id;
         self
     }
     pub fn add_style(&mut self, key: &'static str, value: Cow<'static, str>){
@@ -46,11 +53,24 @@ impl Attributes {
             dest.write_str(&click)?;
             dest.write_str("\"")?;
         }
+        write!(dest, "id=\"{}\"", self.id)?;
         Ok(())
     }
 }
 
-pub struct HtmlRenderer;
+pub struct HtmlRenderer{
+    last_render: String
+}
+impl HtmlRenderer {
+    pub fn new() -> Self {
+        Self {
+            last_render: String::new()
+        }
+    }
+    pub fn get_render(&self) -> &str {
+        &self.last_render
+    }
+}
 
 
 #[derive(Debug)]
@@ -106,12 +126,7 @@ impl Renderer for HtmlRenderer {
                 BreadthInfo::Other => tag.write_open(&mut out).unwrap()
             }
         }
-        let mut file = File::options()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open("out.html").unwrap();
-        file.write_all(out.as_bytes()).unwrap();
+        self.last_render = out;
     }
 }
 
@@ -124,14 +139,16 @@ impl Render<Text> for HtmlRenderer {
     }
 }
 
-impl Render<Vlist<Self>> for HtmlRenderer {
+/*impl Render<Vlist<Self>> for HtmlRenderer {
     fn mount<'gui>(widget: &Vlist<Self>, context: &mut visora_core::WidgetContext<'gui, Self>) {
         context.mount_renderer(HtmlTag {
             tag: Tag::Div,
             attributes: Attributes::new()
         });
     }
-}
+}*/
+
+
 impl Render<Hlist<Self>> for HtmlRenderer {
     fn mount<'gui>(widget: &Hlist<Self>, context: &mut visora_core::WidgetContext<'gui, Self>) {
         let attributes = Attributes::new()
@@ -165,7 +182,7 @@ impl Render<Center<Self>> for HtmlRenderer {
         });
     }
 }
-impl Render<Container<Self>> for HtmlRenderer {
+/*impl Render<Container<Self>> for HtmlRenderer {
     fn mount<'gui>(widget: &Container<Self>, context: &mut visora_core::WidgetContext<'gui, Self>) {
         let mut attributes = Attributes::new();
         let padding = widget.insets();
@@ -181,12 +198,12 @@ impl Render<Container<Self>> for HtmlRenderer {
             attributes
         });
     }
-}
+}*/
 
 impl Render<TextButton> for HtmlRenderer {
     fn mount<'gui>(widget: &TextButton, context: &mut visora_core::WidgetContext<'gui, Self>) {
         let attributes = Attributes::new()
-            .with_on_click(Cow::Borrowed("console.log('hello world')"));
+            .with_on_click(Cow::Borrowed("socket.send('clicked')"));
 
         context.mount_renderer(HtmlTag {
             tag: Tag::Button,

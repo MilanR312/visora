@@ -1,7 +1,6 @@
 use center::Center;
-use container::Container;
 use visora_core::widget::Render;
-use text::{RichText, Text, Vlist};
+use text::{RichText, Text};
 
 pub mod text;
 pub mod center;

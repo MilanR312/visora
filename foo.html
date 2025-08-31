@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script>
+        const socket = new WebSocket("ws://127.0.0.1:8081");
+        socket.addEventListener("message", (e) => {
+            let content = e.data.split("|");
+            console.log(content)
+            if (content[0] == "replace") {
+                let e = document.getElementById(content[1]);
+                console.log(e)
+                e.innerHTML = content[2]
+                console.log(e)
+            }
+        })
+    </script>
+</head>
+<body>
+    <div id="root">to_replace</div>
+</body>
+</html>

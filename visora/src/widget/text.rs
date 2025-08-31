@@ -1,6 +1,6 @@
 use lipsum::lipsum;
 use visora_core::{
-    color::Color, renderer::Renderer, widget::{Render, StatelessWidget, Widget}, BuildContext, Component, WidgetContext
+    BuildContext, Component, WidgetContext, color::Color, renderer::Renderer, widget::{Render, RenderAble, Widget}
 };
 
 pub struct Text {
@@ -25,7 +25,7 @@ impl Text {
         self
     }
 }
-impl<R> Widget<R> for Text 
+impl<R> RenderAble<R> for Text 
 where R: Render<Self>
 {
     fn mount<'gui>(&self, mut context: WidgetContext<'gui, R>) -> WidgetContext<'gui, R> {
@@ -98,40 +98,11 @@ impl RichText {
         &self.color
     }
 }
-impl<R: Render<Self>> Widget<R> for RichText {
+impl<R: Render<Self>> RenderAble<R> for RichText {
     fn mount<'gui>(&self, mut context: WidgetContext<'gui, R>) -> WidgetContext<'gui, R> {
         R::mount(&self, &mut context);
         context
     }
 }
 
-
-pub struct Vlist<R> {
-    pub data: Vec<Box<dyn Widget<R>>>,
-}
-impl<R: Renderer> Vlist<R> {
-    pub fn new() -> Self {
-        Self { data: vec![] }
-    }
-    pub fn add(mut self, x: impl Widget<R> + 'static) -> Self {
-        self.data.push(Box::new(x));
-        self
-    }
-    pub fn len(&self) -> usize {
-        self.data.len()
-    }
-}
-impl<R> Widget<R> for Vlist<R>
-where R: Renderer + Render<Self>
-{
-    fn mount<'gui>(&self, mut context: WidgetContext<'gui, R>) -> WidgetContext<'gui, R> {
-        R::mount(self, &mut context);
-        for x in &self.data {
-            let child = context.new_child();
-            context = x.mount(child).to_parent().unwrap();
-        }
-        context
-    }
-
-}
 

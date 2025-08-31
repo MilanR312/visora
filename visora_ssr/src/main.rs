@@ -1,31 +1,34 @@
-use std::ops::DerefMut;
 
-use visora::widget::{
-    button::TextButton, center::Center, container::{Container, EdgeInsets}, list::Hlist, text::{RichText, Text, Vlist}
-};
-use visora_core::{
-    color::Color, renderer::Renderer, treecs::query::Query, widget::{State, StatefulWidget, StatelessWidget, Widget}, Gui, WidgetContext
-};
-use visora_macros::{StatefulWidget, StatelessWidget};
+use std::{fs::File, io::Read, time::Duration};
+
+use futures_util::{SinkExt, StreamExt, TryStreamExt};
+use tokio::{io::AsyncWriteExt, net::TcpListener, time::sleep};
+use tokio_tungstenite::{accept_async, tungstenite::accept};
+use visora::widget::{button::TextButton, list::Hlist, text::Text};
+use visora_core::{Gui, WidgetContext, renderer::Renderer, state::State, widget::{RenderAble, Widget}};
+use visora_macros::RenderAble;
 use visora_ssr::html::HtmlRenderer;
 
-#[derive(StatelessWidget)]
+
+/*#[derive(RenderAble)]
 struct Name;
-impl<R: visora_ssr::SupportedWidgets> StatelessWidget<R> for Name {
-    fn build<'gui>(
-        &self,
-        context: &mut visora_core::BuildContext<'gui>,
-    ) -> impl Widget<R> + 'static {
+
+impl<R: visora_ssr::SupportedWidgets> Widget<R> for Name {
+    type State = ();
+    fn create_state(&self) -> Self::State {
+        ()
+    }
+    fn build<'gui>(&self, state: &Self::State, context: &mut visora_core::BuildContext<'gui>) -> impl visora_core::widget::RenderAble<R> + 'static {
         Text::new("john doe")
     }
-}
+}*/
 
 
-#[derive(StatelessWidget)]
+/*#[derive(RenderAble)]
 struct Attribution{
     name: String
 }
-impl<R> StatelessWidget<R> for Attribution
+impl<R> Widget<R> for Attribution
 where
     R: visora_ssr::SupportedWidgets,
 {
@@ -48,51 +51,123 @@ where
                 .with_insets(EdgeInsets::all(20)),
         )
     }
-}
+}*/
 
 
-#[derive(StatefulWidget)]
+//#[derive(RenderAble)]
 struct Counter {
     start: u64,
     end: u64
 }
+impl<R> RenderAble<R> for Counter
+where
+    R: Renderer,
+    Self: Widget<R>,
+{
 
-struct CounterState(u64);
-impl State for CounterState{}
-
-impl<R: visora_ssr::SupportedWidgets> StatefulWidget<R> for Counter {
-    type State = CounterState;
-    fn create_state(&self) -> Self::State {
-        CounterState(self.start)
+    fn mount<'gui>(
+        &self,
+        mut context: WidgetContext<'gui, R>,
+    ) -> WidgetContext<'gui, R> {
+        context.insert_component(self.create_state());
+        let mut build_context = context.get_buildcontext();
+        let state = State::new(context.get_buildcontext());
+        let build = <Self as Widget<R>>::build(&self, state, &mut build_context);
+        build.mount(context)
     }
-    fn build<'gui>(&self, state: &Self::State, context: &mut visora_core::BuildContext<'gui>) -> impl Widget<R> + 'static {
-        Vlist::new()
+}
+
+impl<R: visora_ssr::SupportedWidgets> Widget<R> for Counter {
+    type State = u64;
+    fn create_state(&self) -> Self::State {
+        self.start
+    }
+    
+    fn build<'gui>(&self, state: State<Self>, context: &mut visora_core::BuildContext<'gui>) -> impl RenderAble<R> + 'static {
+        Hlist::new()
             .add(
-                RichText::new(format!("Count is {}", state.0))
-                .with_color(Color::new_hex(0x000000ff))
+                Text::new(&format!("Counter is : {} [{}:{}]", state.read::<R>(), self.start, self.end))
             )
             .add(
-                TextButton::new(
-                        Text::new("Press me")
-                    )
-                    .on_click(context, |state: &mut Self::State| {
-                        state.changed();
-                    })
+                TextButton::new(Text::new("increment"))
+                .on_click(state.update::<_, R>(|w, s| {
+                    todo!()
+                }))
             )
-        
     }
 }
 // question:
 // what to do when a method has an on_click? 
 // Should State be owned and cheaply clonable?
 
-fn main() {
-    use visora_core::widget::{StatelessWidget, Widget};
-    let mut gui = Gui::new(HtmlRenderer);
 
+#[tokio::main]
+async fn main() {
+    use visora_core::widget::{Widget};
+    let wsserver = TcpListener::bind("0.0.0.0:8081").await.unwrap();
+    tokio::spawn(async {
+        let server = TcpListener::bind("0.0.0.0:8080").await.unwrap();
+        let mut file = File::open("foo.html").unwrap();
+        let mut content = String::new();
+        file.read_to_string(&mut content).unwrap();
+
+        loop {
+            let (mut conn, _) = server.accept().await.unwrap();
+
+            let response = format!(
+                "HTTP/1.1 200 OK\r\n\
+                Content-Length: {}\r\n\
+                Content-Type: html\r\n\
+                Connection: close\r\n\
+                \r\n\
+                {}",
+                content.len(),
+                content
+            );
+            conn.write_all(response.as_bytes()).await.unwrap();
+        }
+    });
+    let mut gui = Gui::new(HtmlRenderer::new());
     let widget = Counter{start: 1, end: 5};
     let context = gui.root_widget_context();
     widget.mount(context);
-
     gui.render();
+    let rendered = gui.renderer().get_render();
+    loop {
+        let rendered = rendered.to_owned();
+        let (x, _) = wsserver.accept().await.unwrap();
+        println!("got ws connection");
+        tokio::spawn(async move {
+            let mut ws = accept_async(x).await.unwrap();
+            let (mut sender, mut receiver) = ws.split();
+
+            loop {
+                sender.send(format!("replace|root|{}", rendered).into()).await.unwrap();
+                let x = receiver.next().await;
+                println!("{x:?}");
+                sleep(Duration::from_secs(1)).await;
+            }
+        });
+    }
+    /*
+
+    let server = TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    loop {
+        let (mut conn, _) = server.accept().await.unwrap();
+        gui.render();
+        let rendered = gui.renderer().get_render();
+        let response = Response::builder()
+            .status(StatusCode::OK)
+            .body(rendered)
+            .unwrap();
+
+    }
+    println!("got connection");
+    loop {
+        gui.render();
+        let rendered = gui.renderer().get_render();
+        dbg!(rendered);
+        conn.write_all(rendered.as_bytes()).await.unwrap();
+        break;
+    }*/
 }
